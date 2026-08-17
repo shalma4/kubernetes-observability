@@ -15,19 +15,22 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                bat '''
-                    python --version
-                    python -m compileall app
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 bat '''
                     docker build -t %IMAGE_NAME%:%IMAGE_TAG% ./app
+                '''
+            }
+        }
+
+        stage('Test Container') {
+            steps {
+                bat '''
+                    docker run -d --name jenkins-test-app -p 8001:8000 %IMAGE_NAME%:%IMAGE_TAG%
+                    timeout /t 5 /nobreak
+                    curl http://localhost:8001/health
+                    docker stop jenkins-test-app
+                    docker rm jenkins-test-app
                 '''
             }
         }
@@ -55,18 +58,25 @@ pipeline {
                 bat '''
                     kubectl rollout status deployment/observability-app -n observability --timeout=120s
                     kubectl get pods -n observability
+                    kubectl get service -n observability
                 '''
             }
         }
     }
 
     post {
+        always {
+            bat '''
+                docker rm -f jenkins-test-app 2>NUL || exit /b 0
+            '''
+        }
+
         success {
-            echo 'Deployment completed successfully!'
+            echo 'Kubernetes observability deployment completed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed. Check the stage logs.'
+            echo 'Pipeline failed. Check the stage that reported the error.'
         }
     }
 }
