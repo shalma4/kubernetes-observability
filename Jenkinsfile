@@ -17,34 +17,32 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh '''
-                    python3 -m venv /tmp/obs-venv
-                    /tmp/obs-venv/bin/pip install -r app/requirements.txt
-                    /tmp/obs-venv/bin/python -m compileall app/
+                bat '''
+                    python --version
+                    python -m compileall app
                 '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ./app
+                bat '''
+                    docker build -t %IMAGE_NAME%:%IMAGE_TAG% ./app
                 '''
             }
         }
 
         stage('Load Image into Kind') {
             steps {
-                sh '''
-                    kind load docker-image ${IMAGE_NAME}:${IMAGE_TAG} \
-                        --name ${CLUSTER}
+                bat '''
+                    kind load docker-image %IMAGE_NAME%:%IMAGE_TAG% --name %CLUSTER%
                 '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh '''
+                bat '''
                     kubectl apply -f k8s/app-deployment.yaml
                     kubectl apply -f k8s/app-service.yaml
                     kubectl apply -f k8s/app-servicemonitor.yaml
@@ -54,10 +52,8 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                sh '''
-                    kubectl rollout status deployment/observability-app \
-                        -n observability --timeout=120s
-
+                bat '''
+                    kubectl rollout status deployment/observability-app -n observability --timeout=120s
                     kubectl get pods -n observability
                 '''
             }
