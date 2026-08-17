@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: observability-app-service
+  namespace: observability
+
+spec:
+  selector:
+    app: observability-app
+
+  ports:
+    - port: 80
+      targetPort: 8000
+
+  type: ClusterIP
